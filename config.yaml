@@ -1,0 +1,41 @@
+# ── Hindsight connection ──────────────────────────────────────────────────────
+server_url: http://localhost:8888
+api_key: ""                       # leave blank for local Docker (unauthenticated)
+                                  # set to your bearer token for cloud deployments
+
+# ── Memory routing ────────────────────────────────────────────────────────────
+# These must match the bank / context the target agent reads in Hindsight.
+bank_id: "default"
+source: "document-ingest"         # passed as 'context' — shapes fact extraction
+session: ""                       # optional session tag stored in metadata
+
+# ── Folders to watch ──────────────────────────────────────────────────────────
+folders:
+  - /path/to/your/docs
+  # - /path/to/more/docs
+
+# ── Scan interval ─────────────────────────────────────────────────────────────
+scan_interval_minutes: 15         # e.g. 5, 15, 60
+
+# ── Local chunking ────────────────────────────────────────────────────────────
+# OFF by default: Hindsight handles chunking server-side.
+# Enable if you want to control chunk boundaries for very large files.
+local_chunking_enabled: false
+chunk_size_tokens: 1000
+chunk_overlap_tokens: 100
+
+# ── Supported file extensions ─────────────────────────────────────────────────
+supported_extensions:
+  - .txt
+  - .md
+  - .log
+  - .csv
+  - .pdf
+  - .docx
+  - .pptx
+  - .xlsx
+  - .png
+  - .jpg
+  - .jpeg
+  - .tiff
+  - .bmp

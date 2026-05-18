@@ -1,0 +1,7 @@
+This is a sample plain-text document used for ingestion testing.
+
+It contains multiple paragraphs so that chunking logic can be exercised
+when local_chunking_enabled is set to true with a small chunk_size_tokens.
+
+Hindsight will extract facts from this content and store them in the
+configured memory bank for later recall by connected agents.

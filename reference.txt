@@ -1,0 +1,11 @@
+Vectorize Hindsight SDK https://hindsight.vectorize.io/sdks/python
+
+API Reference guide: https://hindsight.vectorize.io/api-reference
+API QuickStart: https://hindsight.vectorize.io/developer/api/quickstart
+Retain API: https://hindsight.vectorize.io/developer/api/retain
+Documents API: https://hindsight.vectorize.io/developer/api/documents
+Operations Guide: https://hindsight.vectorize.io/developer/api/operations
+
+
+Similar architecture and functions to this application: https://github.com/winoiknow/mem0-document-ingest
+
