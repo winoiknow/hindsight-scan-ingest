@@ -94,7 +94,7 @@ api_key: ""                       # blank = unauthenticated (local Docker)
                                   # set for cloud deployments
 
 # Memory routing — must match what the target agent reads
-bank_id: "default"
+bank_id: "documents"
 source: "document-ingest"         # context label; shapes Hindsight fact extraction
 session: ""                       # optional session tag stored in memory metadata
 
@@ -184,22 +184,22 @@ A non-empty `documents` array confirms Hindsight received and processed the inge
 
 ```bash
 # Continuous scan at the configured interval
-python main.py
+python3 main.py
 
 # Override the interval from the command line
-python main.py --interval 5
+python3 main.py --interval 5
 
 # Single pass then exit (good for cron)
-python main.py --once
+python3 main.py --once
 
 # Add folders without editing config.yaml
-python main.py --folder /docs/a --folder /docs/b
+python3 main.py --folder /docs/a --folder /docs/b
 
 # Point at a cloud instance with an API key
-python main.py --server-url https://api.hindsight.example.com --api-key sk-...
+python3 main.py --server-url https://api.hindsight.example.com --api-key sk-...
 
 # Full help
-python main.py --help
+python3 main.py --help
 ```
 
 ### CLI reference

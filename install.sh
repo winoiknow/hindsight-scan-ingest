@@ -38,19 +38,19 @@ clear
 echo -e "${CYN}${BOLD}"
 cat <<'BANNER'
 
-   ╔══════════════════════════════════════════════════════════════╗
-   ║                                                              ║
-   ║    ██╗  ██╗██╗███╗   ██╗██████╗ ███████╗██╗ ██████╗ ██╗    ║
-   ║    ██║  ██║██║████╗  ██║██╔══██╗██╔════╝██║██╔════╝ ██║    ║
-   ║    ███████║██║██╔██╗ ██║██║  ██║███████╗██║██║  ███╗██║    ║
-   ║    ██╔══██║██║██║╚██╗██║██║  ██║╚════██║██║██║   ██║╚═╝    ║
-   ║    ██║  ██║██║██║ ╚████║██████╔╝███████║██║╚██████╔╝██╗    ║
-   ║    ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝╚═════╝ ╚══════╝╚═╝ ╚═════╝╚═╝    ║
-   ║                                                              ║
-   ║         ·  S C A N   I N G E S T  ·  I N S T A L L  ·      ║
-   ║                                                              ║
-   ║     Document ingestion daemon  ·  Vectorize Hindsight        ║
-   ╚══════════════════════════════════════════════════════════════╝
+   ╔════════════════════════════════════════════════════════════════╗
+   ║                                                                ║
+   ║   ██╗  ██╗██╗███╗  ██╗██████╗ ███████╗██╗████████╗███████╗   ║
+   ║   ██║  ██║██║████╗ ██║██╔══██╗██╔════╝██║╚══██╔══╝██╔════╝   ║
+   ║   ███████║██║██╔██╗██║██║  ██║███████╗██║   ██║   █████╗     ║
+   ║   ██╔══██║██║██║╚████║██║  ██║╚════██║██║   ██║   ██╔══╝     ║
+   ║   ██║  ██║██║██║ ╚███║██████╔╝███████║██║   ██║   ███████╗   ║
+   ║   ╚═╝  ╚═╝╚═╝╚═╝  ╚══╝╚═════╝ ╚══════╝╚═╝   ╚═╝   ╚══════╝   ║
+   ║                                                                ║
+   ║          ·  S C A N   I N G E S T  ·  I N S T A L L  ·       ║
+   ║                                                                ║
+   ║      Document ingestion daemon  ·  Vectorize Hindsight         ║
+   ╚════════════════════════════════════════════════════════════════╝
 
 BANNER
 echo -e "${RST}"
@@ -128,12 +128,32 @@ ask "Hindsight server URL" "http://localhost:8888" CFG_SERVER_URL
 ask "API key (leave blank for local Docker)" "" CFG_API_KEY
 
 echo ""
-# Memory routing
+# Memory routing — list existing banks before asking
 echo -e "  ${DIM}── Memory routing ─────────────────────────────────────────────${RST}"
 echo -e "  ${DIM}Tip: bank_id must match what your agent is configured to read.${RST}"
-echo -e "  ${DIM}Run: curl ${CFG_SERVER_URL}/v1/default/banks  to list existing banks.${RST}"
 echo ""
-ask "Bank ID" "default" CFG_BANK_ID
+echo -e "  ${CYN}»${RST}  Fetching available banks from ${CFG_SERVER_URL}…"
+BANKS_JSON=$(curl -sf --max-time 5 "${CFG_SERVER_URL}/v1/default/banks" 2>/dev/null || true)
+if [[ -n "$BANKS_JSON" ]]; then
+  BANK_LIST=$(echo "$BANKS_JSON" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+banks = data.get('banks', data if isinstance(data, list) else [])
+for b in banks:
+    bid = b.get('bank_id', b.get('id', '?'))
+    print(f'     • {bid}')
+" 2>/dev/null)
+  if [[ -n "$BANK_LIST" ]]; then
+    echo -e "  ${GRN}✔${RST}  Existing banks:"
+    echo "$BANK_LIST"
+  else
+    echo -e "  ${DIM}     (no banks yet — one will be created on first ingest)${RST}"
+  fi
+else
+  warn "Cannot reach ${CFG_SERVER_URL} — enter bank_id manually."
+fi
+echo ""
+ask "Bank ID" "documents" CFG_BANK_ID
 ask "Source label (context tag for fact extraction)" "document-ingest" CFG_SOURCE
 ask "Session tag (optional, stored in memory metadata)" "" CFG_SESSION
 
@@ -228,12 +248,6 @@ section "Step 5  Testing Hindsight connection"
 info "Pinging ${CFG_SERVER_URL}…"
 if curl -sf --max-time 5 "${CFG_SERVER_URL}/v1/default/banks" -o /dev/null 2>&1; then
   success "Connected to Hindsight at ${CFG_SERVER_URL}"
-  info "Listing available banks:"
-  curl -sf --max-time 5 "${CFG_SERVER_URL}/v1/default/banks" 2>/dev/null \
-    | python3 -m json.tool 2>/dev/null \
-    | grep -E '"bank_id"|"id"' \
-    | sed 's/^/     /' \
-    || echo "     (no banks yet — they are created on first ingest)"
 else
   warn "Could not reach ${CFG_SERVER_URL}."
   warn "Make sure Hindsight is running before starting the daemon."
@@ -258,9 +272,9 @@ if $SETUP_SYSTEMD; then
   mkdir -p "$SERVICE_DIR"
 
   if [[ -d "$VENV_DIR" ]]; then
-    EXEC_CMD="${VENV_DIR}/bin/python ${INSTALL_DIR}/main.py"
+    EXEC_CMD="${VENV_DIR}/bin/python3 ${INSTALL_DIR}/main.py"
   else
-    EXEC_CMD="${PY_RUN} ${INSTALL_DIR}/main.py"
+    EXEC_CMD="${PY} ${INSTALL_DIR}/main.py"
   fi
 
   cat > "$SERVICE_FILE" <<EOF
@@ -327,9 +341,9 @@ echo -e "  ${BOLD}Quick start:${RST}"
 if [[ -d "$VENV_DIR" ]]; then
   echo -e "  ${GRN}source .venv/bin/activate${RST}"
 fi
-echo -e "  ${GRN}python main.py --once${RST}          # single scan pass"
-echo -e "  ${GRN}python main.py${RST}                 # continuous daemon"
-echo -e "  ${GRN}python main.py --help${RST}          # all options"
+echo -e "  ${GRN}python3 main.py --once${RST}         # single scan pass"
+echo -e "  ${GRN}python3 main.py${RST}                # continuous daemon"
+echo -e "  ${GRN}python3 main.py --help${RST}         # all options"
 echo ""
 echo -e "  ${DIM}Hindsight control panel:  ${CFG_SERVER_URL/8888/9999}${RST}"
 echo -e "  ${DIM}Config file:              ${CONFIG_PATH}${RST}"
