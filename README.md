@@ -45,13 +45,33 @@ Control plane UI: http://localhost:9999
 
 ## Installation
 
+### Guided installer (recommended)
+
 ```bash
-git clone https://github.com/ealborn/hindsight-scan-ingest.git
+git clone https://github.com/winoiknow/hindsight-scan-ingest.git
+cd hindsight-scan-ingest
+bash install.sh
+```
+
+The installer will:
+- Check Python 3.11+ and create a virtual environment
+- Install all dependencies
+- Walk you through every `config.yaml` setting interactively
+- Test the connection to your Hindsight server
+- Optionally register a **systemd user service** that starts the daemon automatically on login or boot
+
+### Manual installation
+
+```bash
+git clone https://github.com/winoiknow/hindsight-scan-ingest.git
 cd hindsight-scan-ingest
 pip install -r requirements.txt
+cp config.yaml config.yaml   # edit to taste
 ```
 
 ### Tesseract (optional)
+
+Only needed as a fallback for image OCR if the Hindsight server-side OCR fails.
 
 ```bash
 # Ubuntu / Debian
@@ -100,6 +120,63 @@ supported_extensions:
   - .xlsx
   # … etc.
 ```
+
+---
+
+## Choosing a Bank ID
+
+A **bank** is Hindsight's top-level memory namespace. Every memory retained into `bank_id: "sales-agent"` is completely invisible to a query against `bank_id: "support-agent"`. Matching the bank ID between this daemon and the agent that reads memories is what connects documents to an agent's knowledge.
+
+### List existing banks
+
+**Web UI** — open the Hindsight control plane at `http://localhost:9999` and browse the Banks tab. Each bank shows its profile, memory count, and last-updated time.
+
+**REST API** — query directly:
+
+```bash
+curl http://localhost:8888/v1/default/banks | python3 -m json.tool
+```
+
+Each entry in the response includes the `bank_id`, agent profile/disposition, and statistics.
+
+Check stats for a specific bank:
+
+```bash
+curl http://localhost:8888/v1/default/banks/my-agent/stats | python3 -m json.tool
+```
+
+### Create a new isolated bank
+
+Banks are created automatically the first time you retain a memory into them — no separate provisioning step needed. To create a fresh bank for an agent:
+
+```bash
+# Seed the bank with your first document batch
+python main.py --bank-id my-agent --once --folder /path/to/docs
+```
+
+This creates `my-agent` on first write and populates it. The bank is immediately queryable by any agent or MCP tool that references the same bank ID.
+
+### Give an agent an isolated memory bank
+
+1. **Ingest daemon** — set `bank_id: "my-agent"` in `config.yaml` (or pass `--bank-id my-agent`).
+2. **Claude Code agent** — in the Hindsight plugin settings, set the bank ID to match. The agent will then recall only memories that were ingested into that bank.
+
+To confirm the bank is populated:
+
+```bash
+curl "http://localhost:8888/v1/default/banks/my-agent/documents" | python3 -m json.tool
+```
+
+A non-empty `documents` array confirms Hindsight received and processed the ingested files.
+
+### Shared vs. isolated memory strategy
+
+| Pattern | bank_id | Use case |
+|---|---|---|
+| Single shared bank | `default` | All agents share one knowledge pool |
+| Per-agent isolation | `agent-name` | Each agent has private, non-overlapping memory |
+| Per-project isolation | `project-slug` | Multiple agents work on the same project corpus |
+| Per-team + per-agent | `team/agent` | Hierarchical separation (if Hindsight supports nested IDs) |
 
 ---
 
